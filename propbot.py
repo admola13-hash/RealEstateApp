@@ -2,13 +2,14 @@ import time
 import random
 import streamlit as st
 import pandas as pd
+import os
+from datetime import datetime
 
 # ==========================================
-# הגדרות עמוד ועיצוב מקצועי (CSS)
+# הגדרות עמוד ועיצוב מקצועי
 # ==========================================
 st.set_page_config(page_title="ValuAI | מערכת שמאות חכמה", page_icon="🏙️", layout="centered")
 
-# CSS להעלמת התפריטים של Streamlit ומראה נקי יותר
 hide_streamlit_style = """
             <style>
             #MainMenu {visibility: hidden;}
@@ -20,14 +21,30 @@ hide_streamlit_style = """
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-# הגדרת משתנה מצב לניהול חומת ההרשמה
 if 'unlocked' not in st.session_state:
     st.session_state.unlocked = False
 
 # ==========================================
-# מסד נתונים פנימי (סימולציה)
+# פונקציית שמירת הלקוחות (ה-CRM שלנו)
 # ==========================================
-CITY_PRICES = {"תל אביב": 55000, "ירושלים": 32000, "חיפה": 18000, "בית שמש": 22000, "באר שבע": 15000, "ראשון לציון": 28000}
+def save_lead(email, property_address, current_val):
+    file_name = "leads_database.csv"
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # מסדרים את הנתונים בשורה אחת
+    new_lead = pd.DataFrame([[now, email, property_address, current_val]], 
+                            columns=["תאריך", "אימייל", "כתובת הנכס", "שווי נוכחי"])
+    
+    # שומרים לקובץ (אם לא קיים - המערכת תיצור אותו לבד)
+    if not os.path.isfile(file_name):
+        new_lead.to_csv(file_name, index=False, encoding='utf-8-sig')
+    else:
+        new_lead.to_csv(file_name, mode='a', header=False, index=False, encoding='utf-8-sig')
+
+# ==========================================
+# מסד נתונים פנימי
+# ==========================================
+CITY_PRICES = {"תל אביב": 55000, "ירושלים": 32000, "חיפה": 18000, "בית שמש": 22000, "באר שבע": 15000}
 DEFAULT_PRICE = 20000 
 
 def extract_city(address):
@@ -42,78 +59,58 @@ def check_future_plans():
     ])
 
 # ==========================================
-# חזית האתר - אזור ה-Hero
+# חזית האתר 
 # ==========================================
 st.markdown("<h1 style='text-align: center; color: #004ADD;'>ValuAI</h1>", unsafe_allow_html=True)
 st.markdown("<h3 style='text-align: center;'>גלה את פוטנציאל ההשבחה הנסתר של כל נכס בישראל.</h3>", unsafe_allow_html=True)
 st.write("")
 
-# אזור החיפוש
 target_address = st.text_input("📍 הקלד כתובת מלאה (למשל: נהר הירדן 1, בית שמש)", placeholder="הכנס רחוב, מספר ועיר...")
 col1, col2 = st.columns(2)
 with col1:
     sqm_input = st.number_input("📏 גודל הדירה (מ\"ר)", min_value=10, max_value=500, value=100)
 with col2:
-    property_type = st.selectbox("🏢 סוג נכס", ["דירה", "פנטהאוז", "צמוד קרקע", "משרד"])
+    property_type = st.selectbox("🏢 סוג נכס", ["דירה", "פנטהאוז", "צמוד קרקע"])
 
-st.write("")
 analyze_btn = st.button("🚀 נתח פוטנציאל נכס עכשיו")
 
-# ==========================================
-# הלוגיקה והמתח הפסיכולוגי
-# ==========================================
 if analyze_btn and target_address:
     city = extract_city(target_address)
-    current_price = CITY_PRICES.get(city, DEFAULT_PRICE)
-    current_value = sqm_input * current_price
+    current_value = sqm_input * CITY_PRICES.get(city, DEFAULT_PRICE)
     
-    # בר התקדמות שבונה ציפייה אצל המשתמש
-    progress_text = "מתחבר למאגרי המקרקעין והטאבו..."
-    my_bar = st.progress(0, text=progress_text)
-    
-    time.sleep(1)
-    my_bar.progress(30, text="סורק תוכניות בניין עיר (תב\"ע) והחלטות ועדה...")
+    my_bar = st.progress(0, text="מתחבר למאגרי המקרקעין...")
     time.sleep(1.5)
-    my_bar.progress(70, text="מחשב עסקאות אחרונות ברדיוס הנכס...")
-    time.sleep(1)
     my_bar.progress(100, text="הדוח מוכן!")
     time.sleep(0.5)
-    my_bar.empty() # מעלים את הבר בסיום
+    my_bar.empty() 
 
-    # ==========================================
-    # תצוגת התוצאות וחומת ההרשמה (Lead Capture)
-    # ==========================================
     st.markdown("---")
     st.subheader(f"📊 תוצאות ניתוח ראשוני: {target_address}")
-    
     st.write(f"💰 **שווי שוק נוכחי (מוערך):** {current_value:,.0f} ש\"ח")
-    
-    st.error("🔒 **המערכת זיהתה פוטנציאל השבחה עתידי בנכס זה (תמ\"א / פינוי בינוי).**")
+    st.error("🔒 **המערכת זיהתה פוטנציאל השבחה עתידי בנכס זה.**")
     
     if not st.session_state.unlocked:
         st.markdown("#### גלה את השווי העתידי והרווח היזמי הצפוי")
-        st.write("הזן כתובת דוא\"ל כדי לפתוח את הדוח המלא בחינם:")
-        
-        email_input = st.text_input("כתובת אימייל", placeholder="name@example.com", label_visibility="collapsed")
-        unlock_btn = st.button("🔓 פתח דוח מלא")
+        email_input = st.text_input("כתובת אימייל לפתיחת הדוח", placeholder="name@example.com")
+        unlock_btn = st.button("🔓 פתח דוח מלא בחינם")
         
         if unlock_btn and "@" in email_input:
+            # הפעלת פונקציית שמירת הליד ברקע!
+            save_lead(email_input, target_address, current_value)
+            
             st.session_state.unlocked = True
-            st.rerun() # מרענן את העמוד כדי להציג את התוצאות
+            st.rerun() 
         elif unlock_btn:
             st.warning("אנא הזן כתובת אימייל תקינה.")
 
 if st.session_state.unlocked:
-    # הצגת המידע החסוי אחרי קבלת המייל
     plan = check_future_plans()
-    city = extract_city(target_address) # משיכת העיר שוב אחרי הריענון
-    current_price = CITY_PRICES.get(city, DEFAULT_PRICE)
-    current_value = sqm_input * current_price
+    city = extract_city(target_address) 
+    current_value = sqm_input * CITY_PRICES.get(city, DEFAULT_PRICE)
     future_value = current_value * plan["multiplier"]
     
-    st.success("✅ חומת המידע נפתחה בהצלחה!")
-    st.markdown("### 🔮 כדור הבדולח: פוטנציאל השבחה")
-    st.write(f"**סוג התוכנית שנמצאה:** {plan['type']}")
-    st.write(f"**סטטוס ועדה:** {plan['status']}")
+    st.success("✅ הדוח המלא נפתח! (הנתונים נשמרו במערכת)")
+    st.markdown("### 🔮 פוטנציאל השבחה")
+    st.write(f"**סוג התוכנית:** {plan['type']}")
     st.write(f"🚀 **שווי פוטנציאלי עתידי:** {future_value:,.0f} ש\"ח")
-    st.write(f"📈 **רווח יזמי משוער ממהלך ההשבחה:** {(future_value - current_value):,.0f} ש\"ח")
+    st.write(f"📈 **רווח יזמי משוער:** {(future_value - current_value):,.0f} ש\"ח")
