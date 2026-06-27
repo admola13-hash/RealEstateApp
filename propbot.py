@@ -4,97 +4,116 @@ import streamlit as st
 import pandas as pd
 
 # ==========================================
-# מסד נתונים פנימי
+# הגדרות עמוד ועיצוב מקצועי (CSS)
 # ==========================================
-CITY_PRICES = {
-    "תל אביב": 55000, "ירושלים": 32000, "חיפה": 18000, 
-    "בית שמש": 22000, "באר שבע": 15000, "ראשון לציון": 28000
-}
-DEFAULT_PRICE = 20000 
+st.set_page_config(page_title="ValuAI | מערכת שמאות חכמה", page_icon="🏙️", layout="centered")
 
-# קואורדינטות בסיסיות להצגת מפה (קו רוחב, קו אורך)
-CITY_COORDS = {
-    "תל אביב": [32.0853, 34.7818],
-    "ירושלים": [31.7683, 35.2137],
-    "חיפה": [32.7940, 34.9896],
-    "בית שמש": [31.7470, 34.9881],
-    "באר שבע": [31.2518, 34.7913],
-    "ראשון לציון": [31.9730, 34.7925]
-}
+# CSS להעלמת התפריטים של Streamlit ומראה נקי יותר
+hide_streamlit_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            header {visibility: hidden;}
+            .stButton>button {width: 100%; border-radius: 8px; font-weight: bold; background-color: #004ADD; color: white;}
+            .stTextInput>div>div>input {border-radius: 8px;}
+            </style>
+            """
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
+# הגדרת משתנה מצב לניהול חומת ההרשמה
+if 'unlocked' not in st.session_state:
+    st.session_state.unlocked = False
+
+# ==========================================
+# מסד נתונים פנימי (סימולציה)
+# ==========================================
+CITY_PRICES = {"תל אביב": 55000, "ירושלים": 32000, "חיפה": 18000, "בית שמש": 22000, "באר שבע": 15000, "ראשון לציון": 28000}
+DEFAULT_PRICE = 20000 
 
 def extract_city(address):
     if "," in address:
         return address.split(",")[-1].strip()
     return address.strip()
 
-def get_gush_chelka():
-    return random.randint(3000, 9000), random.randint(10, 200)
-
 def check_future_plans():
-    plans_db = [
+    return random.choice([
         {"type": "פינוי בינוי (התחדשות עירונית)", "status": "אושר בוועדה", "multiplier": 1.35},
-        {"type": "תמ\"א 38/2 (הריסה ובנייה)", "status": "הוגשה בקשה", "multiplier": 1.25},
-        {"type": "תוספת זכויות בנייה (מרפסות וממ\"ד)", "status": "בדיון", "multiplier": 1.15}
-    ]
-    return random.choice(plans_db)
+        {"type": "תמ\"א 38/2 (הריסה ובנייה)", "status": "הוגשה בקשה", "multiplier": 1.25}
+    ])
 
 # ==========================================
-# ממשק המשתמש - אתר SaaS
+# חזית האתר - אזור ה-Hero
 # ==========================================
-st.set_page_config(page_title="מערכת שמאות חכמה", page_icon="🏢", layout="wide")
+st.markdown("<h1 style='text-align: center; color: #004ADD;'>ValuAI</h1>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align: center;'>גלה את פוטנציאל ההשבחה הנסתר של כל נכס בישראל.</h3>", unsafe_allow_html=True)
+st.write("")
 
-# תפריט צד (Sidebar) לניהול מנויים
-with st.sidebar:
-    st.header("הגדרות חשבון")
-    is_premium = st.checkbox("👑 שדרג למנוי פרימיום (סימולציה)")
-    if is_premium:
-        st.success("חשבון פרימיום פעיל! כל מאגרי המידע פתוחים.")
-    else:
-        st.info("חשבון חינמי. חלקי מידע חסומים.")
-
-st.title("🏢 מערכת הערכת נדל\"ן מבוססת AI")
-st.write("סרוק נכס וגלה את שווי השוק שלו באופן מיידי.")
-
-col1, col2 = st.columns([2, 1]) # חלוקת המסך לעמודות
-
+# אזור החיפוש
+target_address = st.text_input("📍 הקלד כתובת מלאה (למשל: נהר הירדן 1, בית שמש)", placeholder="הכנס רחוב, מספר ועיר...")
+col1, col2 = st.columns(2)
 with col1:
-    target_address = st.text_input("הכנס כתובת מלאה (למשל: נהר הירדן 1, בית שמש):")
-    sqm_input = st.number_input("מה גודל הדירה במ\"ר?", min_value=10, max_value=500, value=100)
-    analyze_btn = st.button("נתח נכס 🔍", type="primary")
+    sqm_input = st.number_input("📏 גודל הדירה (מ\"ר)", min_value=10, max_value=500, value=100)
+with col2:
+    property_type = st.selectbox("🏢 סוג נכס", ["דירה", "פנטהאוז", "צמוד קרקע", "משרד"])
 
+st.write("")
+analyze_btn = st.button("🚀 נתח פוטנציאל נכס עכשיו")
+
+# ==========================================
+# הלוגיקה והמתח הפסיכולוגי
+# ==========================================
 if analyze_btn and target_address:
     city = extract_city(target_address)
+    current_price = CITY_PRICES.get(city, DEFAULT_PRICE)
+    current_value = sqm_input * current_price
     
-    with st.spinner('מושך נתוני מקרקעין...'):
-        time.sleep(1)
-        gush, chelka = get_gush_chelka()
-        plan = check_future_plans()
+    # בר התקדמות שבונה ציפייה אצל המשתמש
+    progress_text = "מתחבר למאגרי המקרקעין והטאבו..."
+    my_bar = st.progress(0, text=progress_text)
+    
+    time.sleep(1)
+    my_bar.progress(30, text="סורק תוכניות בניין עיר (תב\"ע) והחלטות ועדה...")
+    time.sleep(1.5)
+    my_bar.progress(70, text="מחשב עסקאות אחרונות ברדיוס הנכס...")
+    time.sleep(1)
+    my_bar.progress(100, text="הדוח מוכן!")
+    time.sleep(0.5)
+    my_bar.empty() # מעלים את הבר בסיום
+
+    # ==========================================
+    # תצוגת התוצאות וחומת ההרשמה (Lead Capture)
+    # ==========================================
+    st.markdown("---")
+    st.subheader(f"📊 תוצאות ניתוח ראשוני: {target_address}")
+    
+    st.write(f"💰 **שווי שוק נוכחי (מוערך):** {current_value:,.0f} ש\"ח")
+    
+    st.error("🔒 **המערכת זיהתה פוטנציאל השבחה עתידי בנכס זה (תמ\"א / פינוי בינוי).**")
+    
+    if not st.session_state.unlocked:
+        st.markdown("#### גלה את השווי העתידי והרווח היזמי הצפוי")
+        st.write("הזן כתובת דוא\"ל כדי לפתוח את הדוח המלא בחינם:")
         
-        current_price = CITY_PRICES.get(city, DEFAULT_PRICE)
-        current_value = sqm_input * current_price
+        email_input = st.text_input("כתובת אימייל", placeholder="name@example.com", label_visibility="collapsed")
+        unlock_btn = st.button("🔓 פתח דוח מלא")
         
-        st.markdown("---")
-        st.subheader(f"תוצאות הניתוח: {target_address}")
-        
-        # אזור התוצאות החינמי
-        st.write(f"**זיהוי רישומי:** גוש {gush} | חלקה {chelka}")
-        st.write(f"💰 **שווי שוק נוכחי (בסיס):** {current_value:,.0f} ש\"ח")
-        
-        # הצגת מפה (אם העיר קיימת במאגר הקואורדינטות)
-        if city in CITY_COORDS:
-            map_data = pd.DataFrame([CITY_COORDS[city]], columns=['lat', 'lon'])
-            st.map(map_data, zoom=13)
-        
-        # אזור התוצאות בתשלום (Paywall)
-        st.markdown("---")
-        st.subheader("🔮 כדור הבדולח: פוטנציאל השבחה ותב\"ע")
-        
-        if is_premium:
-            future_value = current_value * plan["multiplier"]
-            st.success(f"**נמצא פוטנציאל השבחה!** סוג: {plan['type']} | סטטוס: {plan['status']}")
-            st.write(f"🚀 **שווי פוטנציאלי עתידי:** {future_value:,.0f} ש\"ח")
-            st.write(f"📈 **רווח יזמי משוער:** {(future_value - current_value):,.0f} ש\"ח")
-        else:
-            st.error("🔒 מידע זה חסום למשתמשים בחינם.")
-            st.write("המערכת זיהתה תוכניות עתידיות בנכס שעשויות לשנות את שוויו בעשרות אחוזים.")
-            st.button("שדרג עכשיו כדי לחשוף את התוכניות")
+        if unlock_btn and "@" in email_input:
+            st.session_state.unlocked = True
+            st.rerun() # מרענן את העמוד כדי להציג את התוצאות
+        elif unlock_btn:
+            st.warning("אנא הזן כתובת אימייל תקינה.")
+
+if st.session_state.unlocked:
+    # הצגת המידע החסוי אחרי קבלת המייל
+    plan = check_future_plans()
+    city = extract_city(target_address) # משיכת העיר שוב אחרי הריענון
+    current_price = CITY_PRICES.get(city, DEFAULT_PRICE)
+    current_value = sqm_input * current_price
+    future_value = current_value * plan["multiplier"]
+    
+    st.success("✅ חומת המידע נפתחה בהצלחה!")
+    st.markdown("### 🔮 כדור הבדולח: פוטנציאל השבחה")
+    st.write(f"**סוג התוכנית שנמצאה:** {plan['type']}")
+    st.write(f"**סטטוס ועדה:** {plan['status']}")
+    st.write(f"🚀 **שווי פוטנציאלי עתידי:** {future_value:,.0f} ש\"ח")
+    st.write(f"📈 **רווח יזמי משוער ממהלך ההשבחה:** {(future_value - current_value):,.0f} ש\"ח")
