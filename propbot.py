@@ -5,10 +5,7 @@ import pandas as pd
 import os
 from datetime import datetime
 
-# ==========================================
-# הגדרות עמוד ועיצוב מקצועי
-# ==========================================
-st.set_page_config(page_title="ValuAI | מערכת שמאות חכמה", page_icon="🏙️", layout="centered")
+st.set_page_config(page_title="ValuAI Global", page_icon="🌍", layout="centered")
 
 hide_streamlit_style = """
             <style>
@@ -16,7 +13,6 @@ hide_streamlit_style = """
             footer {visibility: hidden;}
             header {visibility: hidden;}
             .stButton>button {width: 100%; border-radius: 8px; font-weight: bold; background-color: #004ADD; color: white;}
-            .stTextInput>div>div>input {border-radius: 8px;}
             </style>
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
@@ -24,93 +20,87 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 if 'unlocked' not in st.session_state:
     st.session_state.unlocked = False
 
-# ==========================================
-# פונקציית שמירת הלקוחות (ה-CRM שלנו)
-# ==========================================
-def save_lead(email, property_address, current_val):
-    file_name = "leads_database.csv"
+def save_lead(email, country, address, current_val):
+    file_name = "global_leads.csv"
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    new_lead = pd.DataFrame([[now, email, country, address, current_val]], 
+                            columns=["תאריך", "אימייל", "מדינה", "כתובת", "שווי בסיסי"])
     
-    # מסדרים את הנתונים בשורה אחת
-    new_lead = pd.DataFrame([[now, email, property_address, current_val]], 
-                            columns=["תאריך", "אימייל", "כתובת הנכס", "שווי נוכחי"])
-    
-    # שומרים לקובץ (אם לא קיים - המערכת תיצור אותו לבד)
     if not os.path.isfile(file_name):
         new_lead.to_csv(file_name, index=False, encoding='utf-8-sig')
     else:
         new_lead.to_csv(file_name, mode='a', header=False, index=False, encoding='utf-8-sig')
 
 # ==========================================
-# מסד נתונים פנימי
+# ה"מוח" הגלובלי: מנוע הניתוב ל-APIs השונים
 # ==========================================
-CITY_PRICES = {"תל אביב": 55000, "ירושלים": 32000, "חיפה": 18000, "בית שמש": 22000, "באר שבע": 15000}
-DEFAULT_PRICE = 20000 
-
-def extract_city(address):
-    if "," in address:
-        return address.split(",")[-1].strip()
-    return address.strip()
-
-def check_future_plans():
-    return random.choice([
-        {"type": "פינוי בינוי (התחדשות עירונית)", "status": "אושר בוועדה", "multiplier": 1.35},
-        {"type": "תמ\"א 38/2 (הריסה ובנייה)", "status": "הוגשה בקשה", "multiplier": 1.25}
-    ])
+def global_api_router(country, address):
+    """
+    כאן המערכת מחליטה לאיזה מאגר נתונים לפנות בעולם לפי בחירת המשתמש.
+    כרגע זה מדמה פנייה לשרתים שונים.
+    """
+    if country == "ישראל (GovMap)":
+        return {"currency": "₪", "base_price": 25000, "plan_name": "תמ\"א 38 / פינוי בינוי", "multiplier": 1.35}
+    
+    elif country == "ארצות הברית (Zillow API)":
+        return {"currency": "$", "base_price": 4500, "plan_name": "Zoning Upgrade / Flip", "multiplier": 1.45}
+    
+    elif country == "בריטניה (Land Registry)":
+        return {"currency": "£", "base_price": 6000, "plan_name": "Extension Permitted Development", "multiplier": 1.20}
 
 # ==========================================
-# חזית האתר 
+# חזית האתר - הממשק הבינלאומי
 # ==========================================
-st.markdown("<h1 style='text-align: center; color: #004ADD;'>ValuAI</h1>", unsafe_allow_html=True)
-st.markdown("<h3 style='text-align: center;'>גלה את פוטנציאל ההשבחה הנסתר של כל נכס בישראל.</h3>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; color: #004ADD;'>ValuAI 🌍</h1>", unsafe_allow_html=True)
+st.markdown("<h3 style='text-align: center;'>מנוע השמאות הגלובלי. נתח כל נכס בעולם.</h3>", unsafe_allow_html=True)
 st.write("")
 
-target_address = st.text_input("📍 הקלד כתובת מלאה (למשל: נהר הירדן 1, בית שמש)", placeholder="הכנס רחוב, מספר ועיר...")
-col1, col2 = st.columns(2)
-with col1:
-    sqm_input = st.number_input("📏 גודל הדירה (מ\"ר)", min_value=10, max_value=500, value=100)
-with col2:
-    property_type = st.selectbox("🏢 סוג נכס", ["דירה", "פנטהאוז", "צמוד קרקע"])
+# בחירת המדינה היא הקריטית ביותר לניתוב הבקשה
+selected_country = st.selectbox("🌍 בחר מדינת יעד לסריקה:", ["ישראל (GovMap)", "ארצות הברית (Zillow API)", "בריטניה (Land Registry)"])
 
-analyze_btn = st.button("🚀 נתח פוטנציאל נכס עכשיו")
+target_address = st.text_input("📍 הקלד כתובת מלאה בעיר היעד", placeholder="למשל: 5th Avenue, New York / נהר הירדן 1, בית שמש")
+sqm_input = st.number_input("📏 גודל הנכס (במ\"ר)", min_value=10, max_value=2000, value=100)
+
+analyze_btn = st.button("🚀 נתח פוטנציאל בינלאומי עכשיו")
 
 if analyze_btn and target_address:
-    city = extract_city(target_address)
-    current_value = sqm_input * CITY_PRICES.get(city, DEFAULT_PRICE)
+    # שליחת הבקשה לראוטר הגלובלי
+    market_data = global_api_router(selected_country, target_address)
+    currency = market_data["currency"]
+    current_value = sqm_input * market_data["base_price"]
     
-    my_bar = st.progress(0, text="מתחבר למאגרי המקרקעין...")
-    time.sleep(1.5)
-    my_bar.progress(100, text="הדוח מוכן!")
+    my_bar = st.progress(0, text=f"מתחבר לשרתי הנדל\"ן המקומיים ב{selected_country.split(' ')[0]}...")
+    time.sleep(1)
+    my_bar.progress(50, text="מנתח רישומי מקרקעין ותוכניות אזוריות...")
+    time.sleep(1)
+    my_bar.progress(100, text="הדוח הופק בהצלחה!")
     time.sleep(0.5)
-    my_bar.empty() 
+    my_bar.empty()
 
     st.markdown("---")
-    st.subheader(f"📊 תוצאות ניתוח ראשוני: {target_address}")
-    st.write(f"💰 **שווי שוק נוכחי (מוערך):** {current_value:,.0f} ש\"ח")
-    st.error("🔒 **המערכת זיהתה פוטנציאל השבחה עתידי בנכס זה.**")
+    st.subheader(f"📊 שווי שוק נוכחי: {target_address}")
+    st.write(f"💰 **הערכה בסיסית:** {current_value:,.0f} {currency}")
     
     if not st.session_state.unlocked:
-        st.markdown("#### גלה את השווי העתידי והרווח היזמי הצפוי")
-        email_input = st.text_input("כתובת אימייל לפתיחת הדוח", placeholder="name@example.com")
-        unlock_btn = st.button("🔓 פתח דוח מלא בחינם")
+        st.error("🔒 **זוהה פוטנציאל השבחה אלגוריתמי (Market Arbitrage).**")
+        st.write("הזן אימייל כדי לחשוף את הדוח העולמי המלא:")
+        
+        email_input = st.text_input("אימייל", placeholder="investor@global.com", label_visibility="collapsed")
+        unlock_btn = st.button("🔓 פתח דוח גלובלי")
         
         if unlock_btn and "@" in email_input:
-            # הפעלת פונקציית שמירת הליד ברקע!
-            save_lead(email_input, target_address, current_value)
-            
+            save_lead(email_input, selected_country, target_address, current_value)
             st.session_state.unlocked = True
-            st.rerun() 
-        elif unlock_btn:
-            st.warning("אנא הזן כתובת אימייל תקינה.")
+            st.rerun()
 
 if st.session_state.unlocked:
-    plan = check_future_plans()
-    city = extract_city(target_address) 
-    current_value = sqm_input * CITY_PRICES.get(city, DEFAULT_PRICE)
-    future_value = current_value * plan["multiplier"]
+    market_data = global_api_router(selected_country, target_address)
+    currency = market_data["currency"]
+    current_value = sqm_input * market_data["base_price"]
+    future_value = current_value * market_data["multiplier"]
     
-    st.success("✅ הדוח המלא נפתח! (הנתונים נשמרו במערכת)")
-    st.markdown("### 🔮 פוטנציאל השבחה")
-    st.write(f"**סוג התוכנית:** {plan['type']}")
-    st.write(f"🚀 **שווי פוטנציאלי עתידי:** {future_value:,.0f} ש\"ח")
-    st.write(f"📈 **רווח יזמי משוער:** {(future_value - current_value):,.0f} ש\"ח")
+    st.success("✅ הנתונים הגלובליים נפתחו!")
+    st.markdown("### 🔮 תחזית השבחה אזורית")
+    st.write(f"**אסטרטגיה מקומית מומלצת:** {market_data['plan_name']}")
+    st.write(f"🚀 **שווי פוטנציאלי לאחר השבחה:** {future_value:,.0f} {currency}")
+    st.write(f"📈 **רווח יזמי חזוי:** {(future_value - current_value):,.0f} {currency}")
